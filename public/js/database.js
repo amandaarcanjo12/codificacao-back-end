@@ -1,0 +1,1 @@
+// Os dados agora são controlados pelo servidor (server.js) via API REST

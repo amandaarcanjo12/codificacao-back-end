@@ -1,75 +1,136 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
+//////////////////////CONFIGURAÇÃO INICIAL///////////////////////////
+
+const express = require('express');
+const session = require('express-session'); //PERMITE AO SERVIDOR LEMBRAR QUEM É O USUÁRIO LOGADO E O QUE ELE COLOCOU NO CARRINHO
+const path = require('path');
 
 const app = express();
-// PASSO 1: Alterar a porta padrão para 4000
-const PORT = process.env.PORT || 4000;
+const PORT = 3000;
 
 app.use(express.json());
+app.use(session({
+    secret: 'chave-secreta-eshop',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }
+}));
 
-// PASSO 2, 3 e 4: Ajustar o mock de dados (Removido order-102, alterado status e contexto para suporte)
-let chats = [
-  {
-    id: "order-101",
-    orderStatus: "Em andamento",
-    // Substituído driver por agent + adicionado campo id nos participantes
-    agent: { id: "user_agent_1", name: "Carlos Silva", phone: "(11) 99999-8888" },
-    customer: { id: "user_client_1", name: "Ana Souza" },
-    messages: [
-      { id: 1, sender: "system", text: "Atendimento iniciado pelo suporte.", timestamp: "15:30" },
-      { id: 2, sender: "agent", text: "Olá Ana, tudo bem? Como posso te ajudar com o seu pedido hoje?", timestamp: "15:31" },
-      { id: 3, sender: "customer", text: "Oi Carlos! Meu aplicativo está dando erro na tela de pagamento.", timestamp: "15:32" }
-    ]
-  }
+app.use(express.static(path.join(__dirname, 'public'))); 
+
+////////////////////////BANCO DE DADOS TEMPORÁRIO/////////////////
+
+//LISTA DE OBJETOS QUE SIMULA UM BANCO DE DADOS
+let produtos = [
+    { id: 1, nome: "Notebook Gamer", preco: 4500, estoque: 8, categoria: "Eletrônicos", avaliacoes: [5, 5, 4], desc: "RTX 3060, 16GB RAM" },
+    { id: 2, nome: "Mouse Wireless", preco: 150, estoque: 20, categoria: "Acessórios", avaliacoes: [4, 3], desc: "Sensor óptico 1600dpi" },
+    { id: 3, nome: "Luminária LED", preco: 80, estoque: 15, categoria: "Casa", avaliacoes: [5], desc: "Luz branca fria" } 
 ];
 
-// --- ROTAS DA API ---
+//LISTA COM O USUÁRIO ÚNICO
+const USERS = [{ user: "admin", pass: "123" }];
 
-// PASSO 5: Rota GET /api/chats (Listar todos) REMOVIDA.
+////////////////////////ROTAS DE PRODUTOS (CRUD)/////////////
 
-// 1. Buscar os detalhes de um chat específico pelo ID do pedido
-app.get('/api/chats/:orderId', (req, res) => {
-  const chat = chats.find(c => c.id === req.params.orderId);
-  if (!chat) {
-    return res.status(404).json({ error: "Atendimento não encontrado." });
-  }
-  res.json(chat);
+//DEVOLVE A LISTA COMPLETA DE PRODUTOS AO FRONTEND
+app.get('/api/produtos', (req, res) => {
+    res.json(produtos);
 });
 
-// 2. Enviar uma nova mensagem em um chat
-app.post('/api/chats/:orderId/messages', (req, res) => {
-  const { orderId } = req.params;
-  const { sender, text } = req.body;
-
-  if (!sender || !text) {
-    return res.status(400).json({ error: "Os campos 'sender' e 'text' são obrigatórios." });
-  }
-
-  const chat = chats.find(c => c.id === orderId);
-  if (!chat) {
-    return res.status(404).json({ error: "Chat não encontrado." });
-  }
-
-  const now = new Date();
-  const timestamp = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-  const newMessage = {
-    id: chat.messages.length + 1,
-    sender,
-    text,
-    timestamp
-  };
-
-  chat.messages.push(newMessage);
-  res.status(201).json(newMessage);
+//SE RECEBER UM id ELE ATUALIZA O PRODUTO EXISTENTE E SE NÃO RECEBER ELE CRIA UM NOVO PRODUTO 
+app.post('/api/produtos', (req, res) => {
+    const { id, nome, preco, estoque, categoria, desc } = req.body;
+    
+    if (id) { 
+        const idx = produtos.findIndex(p => p.id == id);
+        if (idx !== -1) {
+            produtos[idx] = { ...produtos[idx], nome, preco: parseFloat(preco), estoque: parseInt(estoque), categoria, desc };
+            return res.json(produtos[idx]);
+        }
+    } else { 
+        const novo = { id: Date.now(), nome, preco: parseFloat(preco), estoque: parseInt(estoque), categoria, desc, avaliacoes: [5] };
+        produtos.push(novo);
+        return res.status(201).json(novo);
+    }
 });
 
-// --- SERVIR INTERFACE FRONT-END ---
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor de Suporte rodando em: http://localhost:${PORT}`);
+//DELETA O PRODUTO CORRESPONDENTE AO id ENVIADO
+app.delete('/api/produtos/:id', (req, res) => {
+    produtos = produtos.filter(p => p.id != req.params.id);
+    res.status(204).send();
 });
+
+//ENCONTRA O PRODUTO E ADICIONA UMA NOVA NOTA DE AVALIAÇÃO
+app.post('/api/produtos/:id/avaliar', (req, res) => {
+    const p = produtos.find(x => x.id == req.params.id);
+    if (p) {
+        p.avaliacoes.push(parseInt(req.body.nota));
+        return res.json(p);
+    }
+    res.status(404).json({ erro: "Produto não encontrado" });
+});
+
+////////////////////////ROTAS DE AUTENTICAÇÃO//////////////////////////////////////////
+
+//VALIDA SE O USUÁRIO E A SENHA BATEM COM A LISTA users, E SE ESTIVER CERTO SALVA O NOME DE USUÁRIO
+app.post('/api/auth/login', (req, res) => {
+    const { u, p } = req.body;
+    const userValid = USERS.find(x => x.user === u && x.pass === p);
+    if (userValid) {
+        req.session.user = u;
+        return res.json({ sucesso: true, user: u });
+    }
+    res.status(401).json({ sucesso: false });
+});
+
+//DESLOGA O USUÁRIO E LIMPA SEUS DADOS TEMPORÁRIOS
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy();
+    res.json({ sucesso: true });
+});
+
+app.get('/api/auth/check', (req, res) => {
+    res.json({ user: req.session.user || null });
+});
+
+////////////////////ROTAS DO CARRINHO DE COMPRAS///////////////////////
+
+//RETORNA OS ITENS SALVOS NO CARRINHO DO USUÁRIO ATUAL
+app.get('/api/carrinho', (req, res) => {
+    req.session.carrinho = req.session.carrinho || [];
+    res.json(req.session.carrinho);
+});
+
+//VERIFICA SE O PRODUTO EXISTE E SE TEM ESTOQUE DISPONÍVEL, SE O PRODUTO JÁ ESTIVER NO CARRINHO ELE
+// AUMENTA A QUANTIDADE, CASO CONTRÁRIO ADICIONA UM NOVO ITEM
+app.post('/api/carrinho/adicionar', (req, res) => {
+    req.session.carrinho = req.session.carrinho || [];
+    const prodId = req.body.id;
+    const p = produtos.find(x => x.id == prodId);
+    
+    if (!p || p.estoque <= 0) return res.status(400).json({ erro: "Sem stock" });
+
+    const item = req.session.carrinho.find(x => x.id == prodId);
+    if (item) {
+        item.qtd++;
+    } else {
+        req.session.carrinho.push({ id: p.id, nome: p.nome, preco: p.preco, qtd: 1 });
+    }
+    res.json(req.session.carrinho);
+});
+
+//LOCALIZA O PRODUTO ORIGINAL NA LISTA GLOBAL E TIRA A QUANTIDADE COMPRADA DO ESTOQUE REAL, E ESVAZIA O CARRINHO NO FINAL DA SESSÃO
+app.post('/api/carrinho/finalizar', (req, res) => {
+    const cart = req.session.carrinho || [];
+    if (cart.length === 0) return res.status(400).json({ erro: "Carrinho vazio" });
+
+
+    for (const item of cart) {
+        const prodReal = produtos.find(p => p.id == item.id);
+        if (prodReal) prodReal.estoque -= item.qtd;
+    }
+
+    req.session.carrinho = []; 
+    res.json({ sucesso: true });
+});
+
+app.listen(PORT, () => console.log(`Servidor a rodar em http://localhost:${PORT}`));

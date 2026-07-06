@@ -1,151 +1,149 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Suporte Técnico</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    #chat-messages::-webkit-scrollbar { width: 6px; }
-    #chat-messages::-webkit-scrollbar-track { background: transparent; }
-    #chat-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    #chat-messages::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Shop Final Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-50 h-screen flex flex-col items-center justify-center p-4 antialiased">
 
-  <div class="w-full max-w-md mb-4 bg-slate-200/70 p-1 rounded-xl flex gap-1 backdrop-blur-sm">
-    <button id="btn-role-customer" onclick="setRole('customer')" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-200 tracking-wide">
-      Cliente (Ana)
-    </button>
-    <button id="btn-role-agent" onclick="setRole('agent')" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-200 tracking-wide">
-      Atendente (Carlos)
-    </button>
-  </div>
+<body>
 
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col h-[600px] transition-all">
-    
-    <div class="bg-white px-5 py-4 flex justify-between items-center border-b border-slate-100">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 font-bold text-sm">
-          ST
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#" onclick="location.reload()">🚀 E-Shop Pro</a>
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-outline-light position-relative" onclick="app.abrirCarrinho()"
+                    data-bs-toggle="modal" data-bs-target="#modalCarrinho">
+                    🛒 Carrinho <span id="cart-count"
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+                </button>
+                <div id="auth-section"></div>
+            </div>
         </div>
-        <div>
-          <h1 class="text-sm font-semibold text-slate-800">Suporte Técnico 🤨 <span class="text-slate-400 font-normal">#101</span></h1>
-          <p id="chat-participants" class="text-xs text-slate-400 font-medium mt-0.5">Carregando...</p>
+    </nav>
+
+    <div class="container my-4">
+        <div id="login-container" class="card mx-auto mb-5 shadow border-0" style="max-width: 350px; display: none;">
+            <div class="card-body">
+                <h5 class="text-center mb-3">Acessar Conta</h5>
+                <input type="text" id="user-login" class="form-control mb-2" placeholder="Usuário (admin)">
+                <input type="password" id="pass-login" class="form-control mb-3" placeholder="Senha (123)">
+                <button class="btn btn-primary w-100" onclick="auth.login()">Entrar</button>
+            </div>
         </div>
-      </div>
-      <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200/50">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        ATIVO
-      </div>
+
+        <div class="row g-3 mb-4 align-items-end bg-white p-3 rounded shadow-sm">
+            <div class="col-md-4">
+                <label class="small fw-bold text-muted">BUSCAR</label>
+                <input type="text" id="buscaProd" class="form-control" placeholder="Nome do produto..."
+                    oninput="app.render()">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">CATEGORIA</label>
+                <select id="filtroCat" class="form-select" onchange="app.render()">
+                    <option value="">Todas</option>
+                    <option value="Eletrônicos">Eletrônicos</option>
+                    <option value="Acessórios">Acessórios</option>
+                    <option value="Casa">Casa</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">PREÇO</label>
+                <select id="filtroOrdem" class="form-select" onchange="app.render()">
+                    <option value="asc">Menor Preço</option>
+                    <option value="desc">Maior Preço</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalGerenciar"
+                    onclick="app.limparForm()">+ Novo Produto</button>
+            </div>
+        </div>
+
+        <div class="row g-4" id="listaProdutos"></div>
     </div>
 
-    <div id="chat-messages" class="flex-1 p-5 overflow-y-auto space-y-4 bg-gradient-to-b from-amber-50/10 to-transparent flex flex-col">
+    <div class="modal fade" id="modalGerenciar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="tituloModal">Gerenciar Produto</h5><button class="btn-close"
+                        data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="prodId">
+                    <input type="text" id="prodNome" class="form-control mb-2" placeholder="Nome">
+                    <div class="row g-2 mb-2">
+                        <div class="col"><input type="number" id="prodPreco" class="form-control" placeholder="Preço">
+                        </div>
+                        <div class="col"><input type="number" id="prodEstoque" class="form-control"
+                                placeholder="Estoque"></div>
+                    </div>
+                    <select id="prodCat" class="form-select mb-2">
+                        <option>Eletrônicos</option>
+                        <option>Acessórios</option>
+                        <option>Casa</option>
+                    </select>
+                    <textarea id="prodDesc" class="form-control" placeholder="Descrição"></textarea>
+                </div>
+                <div class="modal-footer"><button class="btn btn-primary w-100" onclick="app.salvarProduto()">Salvar
+                        Produto</button></div>
+            </div>
+        </div>
     </div>
 
-    <div class="p-4 bg-white border-t border-slate-100">
-      <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-500 transition-all">
-        <input id="msg-input" type="text" placeholder="Digite uma mensagem..." class="flex-1 bg-transparent border-none outline-none text-sm text-slate-700 placeholder-slate-400 py-1.5 px-1">
-        
-        <button id="send-btn" class="bg-amber-500 hover:bg-amber-600 text-slate-950 p-2 rounded-lg transition-colors flex items-center justify-center shadow-sm shadow-amber-500/20">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-            <path d="M3.105 2.288a.75.75 0 0 0-.826.95l1.414 4.926A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.896 28.896 0 0 0 15.293-7.154.75.75 0 0 0 0-1.115A28.897 28.897 0 0 0 3.105 2.288Z" />
-          </svg>
-        </button>
-      </div>
+    <div class="modal fade" id="modalCarrinho" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Seu Carrinho</h5><button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="cart-items-list"></div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                    <button class="btn btn-success" onclick="app.finalizarPedido()">Fechar Compra</button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script>
-    const orderId = 'order-101';
-    const messagesContainer = document.getElementById('chat-messages');
-    const participantsLabel = document.getElementById('chat-participants');
-    const msgInput = document.getElementById('msg-input');
-    const sendBtn = document.getElementById('send-btn');
-    
-    let currentRole = 'customer';
+    <div class="modal fade" id="modalAvaliar" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Avaliar</h5><button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <input type="hidden" id="avaliarProdId">
+                    <select id="notaEstrela" class="form-select mb-3">
+                        <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                        <option value="4">⭐⭐⭐⭐ (4)</option>
+                        <option value="3">⭐⭐⭐ (3)</option>
+                        <option value="2">⭐⭐ (2)</option>
+                        <option value="1">⭐ (1)</option>
+                    </select>
+                    <button class="btn btn-primary w-100" onclick="app.salvarAvaliacao()">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    function setRole(role) {
-      currentRole = role;
-      const btnCustomer = document.getElementById('btn-role-customer');
-      const btnAgent = document.getElementById('btn-role-agent');
+    <div id="chatbot-window" class="card shadow-lg" style="display:none;">
+        <div class="card-header bg-primary text-white d-flex justify-content-between"><span>Assistente</span><button
+                class="btn-close btn-close-white" onclick="toggleChat()"></button></div>
+        <div id="chat-body" class="card-body overflow-auto" style="height: 200px;"></div>
+        <div class="card-footer"><input type="text" id="chat-input" class="form-control" placeholder="Pergunta..."
+                onkeypress="if(event.key=='Enter') bot.pergunta()"></div>
+    </div>
+    <button id="chat-trigger" class="btn btn-primary rounded-circle shadow" onclick="toggleChat()">💬</button>
 
-      if (role === 'customer') {
-        btnCustomer.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-white text-slate-800 shadow-sm border border-slate-200/30";
-        btnAgent.className = "flex-1 py-2 text-xs font-medium rounded-lg text-slate-500 hover:text-slate-800";
-        msgInput.placeholder = "Escrever como Cliente (Ana)...";
-      } else {
-        btnCustomer.className = "flex-1 py-2 text-xs font-medium rounded-lg text-slate-500 hover:text-slate-800";
-        btnAgent.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-slate-800 text-white shadow-sm";
-        msgInput.placeholder = "Escrever como Suporte (Carlos)...";
-      }
-    }
-
-    function renderChat(chat) {
-      participantsLabel.textContent = `${chat.customer.name} • ${chat.agent?.name || 'Suporte'}`;
-      messagesContainer.innerHTML = '';
-
-      chat.messages.forEach(msg => {
-        const div = document.createElement('div');
-        div.className = `max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all `;
-        
-        if (msg.sender === 'customer') {
-          div.className += 'bg-amber-400 text-slate-900 self-end rounded-br-none';
-        } else if (msg.sender === 'agent') {
-          div.className += 'bg-white text-slate-700 border border-slate-100 self-start rounded-bl-none';
-        } else {
-          div.className += 'bg-slate-100/80 text-slate-500 text-xs font-medium text-center mx-auto my-2 w-auto px-3 py-1 rounded-full shadow-none border border-slate-200/30';
-        }
-
-        const isSystem = msg.sender === 'system';
-        div.innerHTML = `
-          ${isSystem ? '' : `<p class="text-[10px] font-bold tracking-wider opacity-50 mb-0.5">${msg.sender === 'agent' ? 'SUPORTE' : 'CLIENTE'}</p>`}
-          <p class="leading-relaxed break-words">${msg.text}</p>
-          ${isSystem ? '' : `<span class="text-[9px] block text-right mt-1 opacity-40 font-medium">${msg.timestamp}</span>`}
-        `;
-        messagesContainer.appendChild(div);
-      });
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    async function loadChat() {
-      try {
-        const res = await fetch(`/api/chats/${orderId}`);
-        if (!res.ok) throw new Error('Erro na API');
-        const chat = await res.json();
-        renderChat(chat);
-      } catch (error) {
-        console.error("Erro ao carregar o chat:", error);
-      }
-    }
-
-    async function sendMessage() {
-      const text = msgInput.value.trim();
-      if (!text) return;
-
-      const res = await fetch(`/api/chats/${orderId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender: currentRole, text })
-      });
-
-      if (res.ok) {
-        msgInput.value = '';
-        loadChat();
-      }
-    }
-
-    sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-
-    setRole('customer');
-    loadChat();
-    setInterval(loadChat, 2000);
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/database.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
 </body>
+
 </html>
